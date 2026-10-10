@@ -8,8 +8,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js (Dashboard Visuals) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Supabase JS SDK (Cloud Database Integration) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
     body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
@@ -44,10 +42,10 @@
   <!-- MAIN CONTAINER -->
   <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
 
-    <!-- TOP NOTICE / SUPABASE STATUS -->
-    <div id="supabaseStatus" class="mb-6 p-3 rounded-xl text-xs bg-slate-900 border border-slate-800 text-slate-400 flex justify-between items-center">
-      <span>⚡ モード: <strong class="text-indigo-400">スタンドアロン / クラウド対応</strong> (Supabase連携準備完了)</span>
-      <span class="text-slate-500">v1.0.0 Pro</span>
+    <!-- TOP NOTICE -->
+    <div class="mb-6 p-3 rounded-xl text-xs bg-slate-900 border border-slate-800 text-slate-400 flex justify-between items-center">
+      <span>⚡ モード: <strong class="text-emerald-400">スタンドアロン（100%ローカル動作中）</strong></span>
+      <span class="text-slate-500">v1.0.0 Stable</span>
     </div>
 
     <!-- STUDENT VIEW (MEMBER) -->
@@ -70,7 +68,7 @@
         </div>
       </div>
 
-      <!-- QUESTIONNAIRE MODAL / CARD -->
+      <!-- QUESTIONNAIRE CARD -->
       <div id="quizContainer" class="hidden glass-panel rounded-2xl p-6 space-y-6 border border-indigo-500/30">
         <div class="flex justify-between items-center border-b border-slate-800 pb-4">
           <div>
@@ -204,24 +202,12 @@
 
   <!-- FOOTER -->
   <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
-    LabType 64 &copy; 2026 研究室マネジメントシステム ・ 商標登録MBTI®とは独立した独自の64タイプ判定アルゴリズムです
+    LabType 64 &copy; 2026 研究室マネジメントシステム
   </footer>
 
-  <!-- JAVASCRIPT ENGINE -->
+  <!-- JAVASCRIPT ENGINE (NO EXTERNAL DB DEPENDENCIES) -->
   <script>
-    // ==========================================
-    // 1. SUPABASE CONFIGURATION
-    // ==========================================
-    const SUPABASE_URL = '';
-    const SUPABASE_ANON_KEY = '';
-    const supabase = null;
-
-    if (SUPABASE_URL.includes('YOUR_PROJECT_ID') === false) {
-      supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      document.getElementById('supabaseStatus').innerHTML = '🟢 <strong class="text-emerald-400">Supabase クラウド接続中</strong> (データ同期有効)';
-    }
-
-    // LOCAL MOCK STORAGE (Fallback)
+    // LOCAL STORAGE / MEMORY DATABASE
     let mockDbMembers = [
       { id: '1', user_name: '山田 太郎', grade: 'M1', type_code: 'INTJ-TO', base_type: 'INTJ', sub_type: 'TO', raw_scores: { A_T: -4, O_V: 6 } },
       { id: '2', user_name: '佐藤 健太', grade: 'M2', type_code: 'ENTJ-AO', base_type: 'ENTJ', sub_type: 'AO', raw_scores: { A_T: 5, O_V: 8 } },
@@ -229,41 +215,33 @@
       { id: '4', user_name: '高橋 涼', grade: 'M1', type_code: 'INTP-AV', base_type: 'INTP', sub_type: 'AV', raw_scores: { A_T: 3, O_V: -7 } }
     ];
 
-    // ==========================================
-    // 2. QUESTIONNAIRE DATA (30 QUESTIONS)
-    // ==========================================
+    // 30 QUESTIONS DATA
     const questions = [
-      // Q1-5: A / T
       { id: 1, axis: 'A_T', title: 'メンタル・復元力', text: 'ゼミや進捗報告で厳しい指摘を受けた際、精神的なダメージを数日引きずりやすい。', invert: true },
       { id: 2, axis: 'A_T', title: 'メンタル・復元力', text: '1週間かけて準備した実験やコードが失敗に終わった時、「まあ次いこう」とすぐに切り替えられる。', invert: false },
       { id: 3, axis: 'A_T', title: 'メンタル・復元力', text: '大事な発表の前日は、緊張や不安から準備をやり直したくなったり落ち着かなくなったりする。', invert: true },
       { id: 4, axis: 'A_T', title: 'メンタル・復元力', text: '「ここ、論理が通ってない」とストレートに指摘されるより、配慮した言い方をしてもらえる方が意欲を保てる。', invert: true },
       { id: 5, axis: 'A_T', title: 'メンタル・復元力', text: '周りの学生の進捗が自分より圧倒的に進んでいるのを見ると、焦りや強いプレッシャーを感じる。', invert: true },
-      // Q6-10: O / V
       { id: 6, axis: 'O_V', title: '研究・作業スタイル', text: '論文の背景整理よりも、実際に装置を触る・コードを書く作業の方が好きだ。', invert: false },
       { id: 7, axis: 'O_V', title: '研究・作業スタイル', text: '実験が行き詰まった時、まずは「論文を読む（理論）」より「条件を変えて試す（現場）」ことが多い。', invert: false },
       { id: 8, axis: 'O_V', title: '研究・作業スタイル', text: '研究の価値は「泥臭く集めたデータ量」より「新しい概念や面白いストーリー」にあると思う。', invert: true },
       { id: 9, axis: 'O_V', title: '研究・作業スタイル', text: '細かい実験手順の記録やデータ整理など、地道でコツコツとした作業を苦にせず続けられる。', invert: false },
       { id: 10, axis: 'O_V', title: '研究・作業スタイル', text: '「このデータから何が言えるか」の全体像（ロジック）を考えている時が最も面白い。', invert: true },
-      // Q11-15: E / I
       { id: 11, axis: 'E_I', title: '交流スタイル', text: 'コアタイム中は、静かに作業するより他のメンバーと雑談や意見交換をしながら進めたい。', invert: false },
       { id: 12, axis: 'E_I', title: '交流スタイル', text: '研究のアイデアは、一人で考えている時より誰かと会話している時の方が生まれやすい。', invert: false },
       { id: 13, axis: 'E_I', title: '交流スタイル', text: '研究室の飲み会やイベント、他分野との交流の場には積極的に参加したい。', invert: false },
       { id: 14, axis: 'E_I', title: '交流スタイル', text: '一日の終わりには、誰とも話さず一人で過ごす時間がないと回復しない。', invert: true },
       { id: 15, axis: 'E_I', title: '交流スタイル', text: '自分から教授や先輩の席に行って質問・相談を持ちかけることにあまり抵抗がない。', invert: false },
-      // Q16-20: S / N
       { id: 16, axis: 'S_N', title: '発想・テーマ選定', text: '新しい研究テーマを決める時、確実なデータが見込める手堅いテーマを選びたい。', invert: false },
       { id: 17, axis: 'S_N', title: '発想・テーマ選定', text: '多少リスクが高くても、誰もやっていない革新的でスケールの大きいテーマに惹かれる。', invert: true },
       { id: 18, axis: 'S_N', title: '発想・テーマ選定', text: '議論をする時は「具体的にどのデータがどうなっているか」という事実ベースを最重視する。', invert: false },
       { id: 19, axis: 'S_N', title: '発想・テーマ選定', text: 'マニュアル通りに進めるより、自分オリジナルの新しいアプローチを試すのが好きだ。', invert: true },
       { id: 20, axis: 'S_N', title: '発想・テーマ選定', text: '「将来的にこれがどう役立つか」という抽象像より、「いま目の前の問題をどう解くか」に関心がある。', invert: false },
-      // Q21-25: T / F
       { id: 21, axis: 'T_F', title: '判断・コミュニケーション', text: 'ディスカッションでは、人間関係の配慮よりも「客観的な事実と正論」を最優先すべきだ。', invert: false },
       { id: 22, axis: 'T_F', title: '判断・コミュニケーション', text: '研究室の人間関係や雰囲気が悪くなると、自分の研究の進捗にも大きく響く。', invert: true },
       { id: 23, axis: 'T_F', title: '判断・コミュニケーション', text: '他人の発表を聞いてアドバイスする際、良い点よりも改善点や論理的な穴が目につく。', invert: false },
       { id: 24, axis: 'T_F', title: '判断・コミュニケーション', text: '進捗が遅れている後輩に対しては、厳しく指摘するより寄り添って励ますことを重視したい。', invert: true },
       { id: 25, axis: 'T_F', title: '判断・コミュニケーション', text: '自分の成果に対して、「論理の美しさや完成度」を褒められるのが一番嬉しい。', invert: false },
-      // Q26-30: J / P
       { id: 26, axis: 'J_P', title: '進行・スケジュール', text: '発表の数日前には、全てのデータとスライドをほぼ完成させておきたい。', invert: false },
       { id: 27, axis: 'J_P', title: '進行・スケジュール', text: 'ギリギリまでデータを追加したり練り直したりして、直前に一気にスパートをかける。', invert: true },
       { id: 28, axis: 'J_P', title: '進行・スケジュール', text: '「今週やるべきタスク」を事前に細かく決めてから行動したい。', invert: false },
@@ -271,9 +249,7 @@
       { id: 30, axis: 'J_P', title: '進行・スケジュール', text: 'デスク周りやPC内のフォルダ・データ整理は常に規則正しく整頓している。', invert: false }
     ];
 
-    // ==========================================
-    // 3. MASTER PROFILES ENGINE
-    // ==========================================
+    // PROFILES MASTER
     const subTypeMaster = {
       'AO': {
         suffix: '現場エンジニア', tag: 'タフ × 現場実行型',
@@ -317,9 +293,7 @@
       };
     }
 
-    // ==========================================
-    // 4. STATE MANAGEMENT
-    // ==========================================
+    // APP STATE
     let currentRole = 'member';
     let currentQIndex = 0;
     let quizAnswers = {};
@@ -346,9 +320,7 @@
       }
     }
 
-    // ==========================================
-    // 5. DIAGNOSIS FLOW
-    // ==========================================
+    // DIAGNOSIS ACTIONS
     function startDiagnosis() {
       currentQIndex = 0;
       quizAnswers = {};
@@ -427,7 +399,7 @@
       document.getElementById('myResultCard').classList.remove('hidden');
     }
 
-    async function saveResultToDb() {
+    function saveResultToDb() {
       const name = document.getElementById('userNameInput').value.trim();
       const grade = document.getElementById('userGradeInput').value;
 
@@ -436,54 +408,26 @@
         return;
       }
 
-      if (supabase) {
-        const { data, error } = await supabase.from('lab_results').insert([{
-          user_name: name,
-          grade: grade,
-          type_code: lastCalculatedResult.fullCode,
-          base_type: lastCalculatedResult.baseCode,
-          sub_type: lastCalculatedResult.subCode,
-          raw_scores: lastCalculatedResult.scores
-        }]);
+      mockDbMembers.push({
+        id: Date.now().toString(),
+        user_name: name,
+        grade: grade,
+        type_code: lastCalculatedResult.fullCode,
+        base_type: lastCalculatedResult.baseCode,
+        sub_type: lastCalculatedResult.subCode,
+        raw_scores: lastCalculatedResult.scores
+      });
 
-        if (error) {
-          alert('保存に失敗しました: ' + error.message);
-        } else {
-          alert('クラウドDBに診断結果を保存しました！');
-        }
-      } else {
-        // Local Mock Save
-        mockDbMembers.push({
-          id: Date.now().toString(),
-          user_name: name,
-          grade: grade,
-          type_code: lastCalculatedResult.fullCode,
-          base_type: lastCalculatedResult.baseCode,
-          sub_type: lastCalculatedResult.subCode,
-          raw_scores: lastCalculatedResult.scores
-        });
-        alert('ローカルメモリに保存しました！（Supabase連携でクラウド保存になります）');
-      }
+      alert(`診断結果（${lastCalculatedResult.fullCode}）を正常に保存しました！`);
     }
 
-    // ==========================================
-    // 6. PROFESSOR DASHBOARD & CHART
-    // ==========================================
+    // PROFESSOR DASHBOARD & MATRIX CHART
     let chartInstance = null;
 
-    async function refreshDashboard() {
-      let members = mockDbMembers;
-
-      if (supabase) {
-        const { data, error } = await supabase.from('lab_results').select('*').order('created_at', { ascending: false });
-        if (!error && data) {
-          members = data;
-        }
-      }
-
+    function refreshDashboard() {
+      const members = mockDbMembers;
       document.getElementById('memberCountBadge').innerText = `${members.length}名`;
 
-      // RENDER MEMBER CARDS
       const container = document.getElementById('memberListContainer');
       container.innerHTML = '';
 
@@ -507,7 +451,6 @@
         container.appendChild(card);
       });
 
-      // POPULATE PAIR SELECTS
       const selA = document.getElementById('pairSelectA');
       const selB = document.getElementById('pairSelectB');
       selA.innerHTML = ''; selB.innerHTML = '';
