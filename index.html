@@ -212,9 +212,9 @@
     // ==========================================
     // 1. SUPABASE CONFIGURATION
     // ==========================================
-    const SUPABASE_URL = ''; // Replace with your URL
-    const SUPABASE_ANON_KEY = ''; // Replace with your Key
-    let supabase = null;
+    const SUPABASE_URL = '';
+    const SUPABASE_ANON_KEY = '';
+    const supabase = null;
 
     if (SUPABASE_URL.includes('YOUR_PROJECT_ID') === false) {
       supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
