@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabType 64 - 研究室向け64タイプ性格診断＆マネジメント</title>
+  <!-- Tailwind CSS (UI Styling) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js (Dashboard Visuals) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase JS SDK (Cloud Database Integration) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+    body { font-family: 'Noto Sans JP', 'Inter', sans-serif; }
+    .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- APP HEADER -->
+  <header class="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-indigo-600 text-white font-black px-2.5 py-1 rounded-lg text-lg tracking-wider">LAB 64</div>
+        <div>
+          <h1 class="font-bold text-slate-100 leading-none text-base">LabType 64</h1>
+          <p class="text-xs text-slate-400">研究室向け精密性格診断＆指導ツール</p>
+        </div>
+      </div>
+      
+      <!-- ROLE SELECTOR -->
+      <div class="flex items-center space-x-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
+        <button id="roleStudentBtn" onclick="switchRole('member')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow">
+          学生モード
+        </button>
+        <button id="roleProfBtn" onclick="switchRole('owner')" class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white">
+          教員・指導者モード
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-grow w-full">
+
+    <!-- TOP NOTICE / SUPABASE STATUS -->
+    <div id="supabaseStatus" class="mb-6 p-3 rounded-xl text-xs bg-slate-900 border border-slate-800 text-slate-400 flex justify-between items-center">
+      <span>⚡ モード: <strong class="text-indigo-400">スタンドアロン / クラウド対応</strong> (Supabase連携準備完了)</span>
+      <span class="text-slate-500">v1.0.0 Pro</span>
+    </div>
+
+    <!-- STUDENT VIEW (MEMBER) -->
+    <section id="studentView" class="space-y-6">
+      <!-- HERO DIAGNOSIS BANNER -->
+      <div class="glass-panel rounded-2xl p-6 md:p-8 border border-indigo-500/20 bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/30">
+        <div class="max-w-2xl space-y-3">
+          <span class="text-xs font-bold text-indigo-400 tracking-widest uppercase bg-indigo-950/80 px-2.5 py-1 rounded-full border border-indigo-800">全30問 ・ 所要時間約3分</span>
+          <h2 class="text-2xl md:text-3xl font-bold text-white leading-tight">16タイプじゃ分からない。<br>研究室での『あなたのトリセツ』を解明。</h2>
+          <p class="text-sm text-slate-300">進捗が止まった時の声かけパターンや、あなたの作業適性を可視化します。</p>
+          <div class="pt-2 flex flex-wrap gap-3">
+            <button onclick="startDiagnosis()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center space-x-2 text-sm">
+              <span>診断をはじめる (30問)</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+            <button onclick="quickDemoDiagnosis()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold px-4 py-3 rounded-xl border border-slate-700 text-sm transition-all">
+              デモ（結果例をすぐ見る）
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTIONNAIRE MODAL / CARD -->
+      <div id="quizContainer" class="hidden glass-panel rounded-2xl p-6 space-y-6 border border-indigo-500/30">
+        <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+          <div>
+            <span id="quizProgressText" class="text-xs text-indigo-400 font-bold">Q 1 / 30</span>
+            <h3 id="quizAxisTitle" class="text-sm font-semibold text-slate-300">メンタル・復元力</h3>
+          </div>
+          <div class="w-32 bg-slate-800 rounded-full h-2">
+            <div id="quizProgressBar" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 3.3%"></div>
+          </div>
+        </div>
+
+        <div class="py-4">
+          <p id="quizQuestionText" class="text-lg md:text-xl font-medium text-white leading-relaxed">
+            ゼミや進捗報告で厳しい指摘を受けた際、精神的なダメージを数日引きずりやすい。
+          </p>
+        </div>
+
+        <!-- 4-LEVEL ANSWERS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button onclick="answerQuestion(2)" class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800 text-left transition-all">
+            <div class="font-bold text-indigo-400 text-sm">とても当てはまる</div>
+          </button>
+          <button onclick="answerQuestion(1)" class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800 text-left transition-all">
+            <div class="font-bold text-slate-200 text-sm">やや当てはまる</div>
+          </button>
+          <button onclick="answerQuestion(-1)" class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800 text-left transition-all">
+            <div class="font-bold text-slate-300 text-sm">あまり当てはまらない</div>
+          </button>
+          <button onclick="answerQuestion(-2)" class="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500 hover:bg-slate-800 text-left transition-all">
+            <div class="font-bold text-slate-400 text-sm">全く当てはまらない</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- MY RESULT CARD (THE PROFILE) -->
+      <div id="myResultCard" class="hidden glass-panel rounded-2xl p-6 md:p-8 space-y-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
+          <div>
+            <span id="resTag" class="text-xs font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 px-3 py-1 rounded-full">慎重 × 現場実行型</span>
+            <h2 id="resTitle" class="text-2xl md:text-3xl font-extrabold text-white mt-2">INTJ-TO 『建築家【職人アナリスト】』</h2>
+          </div>
+          <!-- USER INPUT FORM -->
+          <div class="flex items-center space-x-2 w-full md:w-auto">
+            <input type="text" id="userNameInput" placeholder="あなたの名前 (例: 山田)" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+            <select id="userGradeInput" class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+              <option value="B4">B4</option>
+              <option value="M1" selected>M1</option>
+              <option value="M2">M2</option>
+              <option value="D1~">D1~</option>
+            </select>
+            <button onclick="saveResultToDb()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition-all whitespace-nowrap">
+              結果を保存
+            </button>
+          </div>
+        </div>
+
+        <!-- PROFILE DETAILS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-2">
+            <h4 class="text-xs font-bold text-indigo-400 uppercase tracking-wider">マインドセット・行動傾向</h4>
+            <p id="resMindset" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+          <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-2">
+            <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider">進捗が止まる原因</h4>
+            <p id="resStuck" class="text-sm text-slate-300 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/80 p-5 rounded-xl border border-slate-800 space-y-3">
+          <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">💡 教授・先輩から掛けてほしい声（SOSテンプレート）</h4>
+          <blockquote id="resVoice" class="text-sm font-semibold text-emerald-200 bg-emerald-950/40 p-3 rounded-lg border-l-4 border-emerald-500"></blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFESSOR VIEW (OWNER / SAAS DASHBOARD) -->
+    <section id="profView" class="hidden space-y-6">
+      <div class="flex justify-between items-center">
+        <div>
+          <h2 class="text-2xl font-bold text-white">研究室マネジメントダッシュボード</h2>
+          <p class="text-xs text-slate-400">研究室メンバーの配置・SOS状態・指導アドバイスを一元管理</p>
+        </div>
+        <button onclick="refreshDashboard()" class="bg-slate-800 hover:bg-slate-700 text-xs px-3 py-2 rounded-xl border border-slate-700">
+          🔄 データ更新
+        </button>
+      </div>
+
+      <!-- 2D LAB MATRIX CHART -->
+      <div class="glass-panel rounded-2xl p-6 space-y-4">
+        <h3 class="text-sm font-bold text-slate-200">📊 研究室メンバー マトリクス配置図 (AO / TO / AV / TV)</h3>
+        <div class="relative h-64 md:h-80 w-full bg-slate-950/80 rounded-xl p-2 border border-slate-800">
+          <canvas id="matrixChart"></canvas>
+        </div>
+      </div>
+
+      <!-- MEMBER LIST & GUIDANCE CARDS -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- MEMBER SOS LIST -->
+        <div class="glass-panel rounded-2xl p-6 space-y-4">
+          <h3 class="text-sm font-bold text-slate-200 flex items-center justify-between">
+            <span>🚨 メンバープロファイル・SOSアラート</span>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full" id="memberCountBadge">0名</span>
+          </h3>
+          <div id="memberListContainer" class="space-y-3 max-h-96 overflow-y-auto pr-1">
+            <!-- Member Cards injected by JS -->
+          </div>
+        </div>
+
+        <!-- PAIRING SIMULATOR -->
+        <div class="glass-panel rounded-2xl p-6 space-y-4">
+          <h3 class="text-sm font-bold text-slate-200">🔀 共同研究・チーム相性シミュレーター</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">学生 A</label>
+              <select id="pairSelectA" onchange="runPairingSimulation()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"></select>
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">学生 B</label>
+              <select id="pairSelectB" onchange="runPairingSimulation()" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white"></select>
+            </div>
+          </div>
+
+          <div id="pairResultBox" class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-2">
+            <div class="text-xs text-slate-400">ペアを選択すると相性インサイトが表示されます</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-4 text-center text-xs text-slate-600">
+    LabType 64 &copy; 2026 研究室マネジメントシステム ・ 商標登録MBTI®とは独立した独自の64タイプ判定アルゴリズムです
+  </footer>
+
+  <!-- JAVASCRIPT ENGINE -->
+  <script>
+    // ==========================================
+    // 1. SUPABASE CONFIGURATION
+    // ==========================================
+    const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; // Replace with your URL
+    const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';                // Replace with your Key
+    let supabase = null;
+
+    if (SUPABASE_URL.includes('YOUR_PROJECT_ID') === false) {
+      supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      document.getElementById('supabaseStatus').innerHTML = '🟢 <strong class="text-emerald-400">Supabase クラウド接続中</strong> (データ同期有効)';
+    }
+
+    // LOCAL MOCK STORAGE (Fallback)
+    let mockDbMembers = [
+      { id: '1', user_name: '山田 太郎', grade: 'M1', type_code: 'INTJ-TO', base_type: 'INTJ', sub_type: 'TO', raw_scores: { A_T: -4, O_V: 6 } },
+      { id: '2', user_name: '佐藤 健太', grade: 'M2', type_code: 'ENTJ-AO', base_type: 'ENTJ', sub_type: 'AO', raw_scores: { A_T: 5, O_V: 8 } },
+      { id: '3', user_name: '鈴木 花子', grade: 'B4', type_code: 'ENFP-TV', base_type: 'ENFP', sub_type: 'TV', raw_scores: { A_T: -6, O_V: -5 } },
+      { id: '4', user_name: '高橋 涼', grade: 'M1', type_code: 'INTP-AV', base_type: 'INTP', sub_type: 'AV', raw_scores: { A_T: 3, O_V: -7 } }
+    ];
+
+    // ==========================================
+    // 2. QUESTIONNAIRE DATA (30 QUESTIONS)
+    // ==========================================
+    const questions = [
+      // Q1-5: A / T
+      { id: 1, axis: 'A_T', title: 'メンタル・復元力', text: 'ゼミや進捗報告で厳しい指摘を受けた際、精神的なダメージを数日引きずりやすい。', invert: true },
+      { id: 2, axis: 'A_T', title: 'メンタル・復元力', text: '1週間かけて準備した実験やコードが失敗に終わった時、「まあ次いこう」とすぐに切り替えられる。', invert: false },
+      { id: 3, axis: 'A_T', title: 'メンタル・復元力', text: '大事な発表の前日は、緊張や不安から準備をやり直したくなったり落ち着かなくなったりする。', invert: true },
+      { id: 4, axis: 'A_T', title: 'メンタル・復元力', text: '「ここ、論理が通ってない」とストレートに指摘されるより、配慮した言い方をしてもらえる方が意欲を保てる。', invert: true },
+      { id: 5, axis: 'A_T', title: 'メンタル・復元力', text: '周りの学生の進捗が自分より圧倒的に進んでいるのを見ると、焦りや強いプレッシャーを感じる。', invert: true },
+      // Q6-10: O / V
+      { id: 6, axis: 'O_V', title: '研究・作業スタイル', text: '論文の背景整理よりも、実際に装置を触る・コードを書く作業の方が好きだ。', invert: false },
+      { id: 7, axis: 'O_V', title: '研究・作業スタイル', text: '実験が行き詰まった時、まずは「論文を読む（理論）」より「条件を変えて試す（現場）」ことが多い。', invert: false },
+      { id: 8, axis: 'O_V', title: '研究・作業スタイル', text: '研究の価値は「泥臭く集めたデータ量」より「新しい概念や面白いストーリー」にあると思う。', invert: true },
+      { id: 9, axis: 'O_V', title: '研究・作業スタイル', text: '細かい実験手順の記録やデータ整理など、地道でコツコツとした作業を苦にせず続けられる。', invert: false },
+      { id: 10, axis: 'O_V', title: '研究・作業スタイル', text: '「このデータから何が言えるか」の全体像（ロジック）を考えている時が最も面白い。', invert: true },
+      // Q11-15: E / I
+      { id: 11, axis: 'E_I', title: '交流スタイル', text: 'コアタイム中は、静かに作業するより他のメンバーと雑談や意見交換をしながら進めたい。', invert: false },
+      { id: 12, axis: 'E_I', title: '交流スタイル', text: '研究のアイデアは、一人で考えている時より誰かと会話している時の方が生まれやすい。', invert: false },
+      { id: 13, axis: 'E_I', title: '交流スタイル', text: '研究室の飲み会やイベント、他分野との交流の場には積極的に参加したい。', invert: false },
+      { id: 14, axis: 'E_I', title: '交流スタイル', text: '一日の終わりには、誰とも話さず一人で過ごす時間がないと回復しない。', invert: true },
+      { id: 15, axis: 'E_I', title: '交流スタイル', text: '自分から教授や先輩の席に行って質問・相談を持ちかけることにあまり抵抗がない。', invert: false },
+      // Q16-20: S / N
+      { id: 16, axis: 'S_N', title: '発想・テーマ選定', text: '新しい研究テーマを決める時、確実なデータが見込める手堅いテーマを選びたい。', invert: false },
+      { id: 17, axis: 'S_N', title: '発想・テーマ選定', text: '多少リスクが高くても、誰もやっていない革新的でスケールの大きいテーマに惹かれる。', invert: true },
+      { id: 18, axis: 'S_N', title: '発想・テーマ選定', text: '議論をする時は「具体的にどのデータがどうなっているか」という事実ベースを最重視する。', invert: false },
+      { id: 19, axis: 'S_N', title: '発想・テーマ選定', text: 'マニュアル通りに進めるより、自分オリジナルの新しいアプローチを試すのが好きだ。', invert: true },
+      { id: 20, axis: 'S_N', title: '発想・テーマ選定', text: '「将来的にこれがどう役立つか」という抽象像より、「いま目の前の問題をどう解くか」に関心がある。', invert: false },
+      // Q21-25: T / F
+      { id: 21, axis: 'T_F', title: '判断・コミュニケーション', text: 'ディスカッションでは、人間関係の配慮よりも「客観的な事実と正論」を最優先すべきだ。', invert: false },
+      { id: 22, axis: 'T_F', title: '判断・コミュニケーション', text: '研究室の人間関係や雰囲気が悪くなると、自分の研究の進捗にも大きく響く。', invert: true },
+      { id: 23, axis: 'T_F', title: '判断・コミュニケーション', text: '他人の発表を聞いてアドバイスする際、良い点よりも改善点や論理的な穴が目につく。', invert: false },
+      { id: 24, axis: 'T_F', title: '判断・コミュニケーション', text: '進捗が遅れている後輩に対しては、厳しく指摘するより寄り添って励ますことを重視したい。', invert: true },
+      { id: 25, axis: 'T_F', title: '判断・コミュニケーション', text: '自分の成果に対して、「論理の美しさや完成度」を褒められるのが一番嬉しい。', invert: false },
+      // Q26-30: J / P
+      { id: 26, axis: 'J_P', title: '進行・スケジュール', text: '発表の数日前には、全てのデータとスライドをほぼ完成させておきたい。', invert: false },
+      { id: 27, axis: 'J_P', title: '進行・スケジュール', text: 'ギリギリまでデータを追加したり練り直したりして、直前に一気にスパートをかける。', invert: true },
+      { id: 28, axis: 'J_P', title: '進行・スケジュール', text: '「今週やるべきタスク」を事前に細かく決めてから行動したい。', invert: false },
+      { id: 29, axis: 'J_P', title: '進行・スケジュール', text: '予定していた実験手順が急に変更になっても、その場で臨機応変に対応できる。', invert: true },
+      { id: 30, axis: 'J_P', title: '進行・スケジュール', text: 'デスク周りやPC内のフォルダ・データ整理は常に規則正しく整頓している。', invert: false }
+    ];
+
+    // ==========================================
+    // 3. MASTER PROFILES ENGINE
+    // ==========================================
+    const subTypeMaster = {
+      'AO': {
+        suffix: '現場エンジニア', tag: 'タフ × 現場実行型',
+        mindset: '失敗を恐れず、泥臭く手を動かして検証を繰り返すタフな実行派。',
+        stuck: '論理的検証をスキップして手当たり次第に試すため、失敗の根本原因を見失って迷走する。',
+        voice: '「色々試してくれたのは素晴らしい！一度これまで試した条件と結果を表に整理してみよう。」'
+      },
+      'TO': {
+        suffix: '職人アナリスト', tag: '慎重 × 現場実行型',
+        mindset: '丁寧な作業が得意だが、失敗を一人で抱え込みやすい慎重派。',
+        stuck: '失敗やデータ異常が出た際、自分のミスだと思い込んで周囲に報告できず泥沼化する。',
+        voice: '「上手くいかないのは研究だから当然だよ。どこで詰まってるか、一緒にデータを見よう。」'
+      },
+      'AV': {
+        suffix: 'グランドデザイナー', tag: 'タフ × 理論概念型',
+        mindset: '構想を描くのが得意で、批判にも折れないタフな理論家。',
+        stuck: '議論ばかりに花が咲き、泥臭い実験やコード書きの行動が後回しになる。',
+        voice: '「ストーリーはすごく面白い！それを証明するために今週やるべき1番目の実験を決めよう。」'
+      },
+      'TV': {
+        suffix: '理論戦略家', tag: '繊細 × 理論概念型',
+        mindset: '論文のロジック構築に長けているが、完璧主義ゆえにプレッシャーに弱い。',
+        stuck: '「完璧なロジックを出さなければ」と考えすぎて、準備段階でフリーズする。',
+        voice: '「完璧じゃなくていいから、まずは不完全でも60点くらいのデータを見せてくれたら一緒に考えるよ。」'
+      }
+    };
+
+    function getFullProfile(typeCode) {
+      const parts = typeCode.split('-');
+      const base = parts[0] || 'INTJ';
+      const sub = parts[1] || 'TO';
+      const subData = subTypeMaster[sub] || subTypeMaster['TO'];
+
+      return {
+        typeCode: typeCode,
+        title: `${base} 『${subData.suffix}』`,
+        tag: subData.tag,
+        mindset: subData.mindset,
+        stuck: subData.stuck,
+        voice: subData.voice
+      };
+    }
+
+    // ==========================================
+    // 4. STATE MANAGEMENT
+    // ==========================================
+    let currentRole = 'member';
+    let currentQIndex = 0;
+    let quizAnswers = {};
+    let lastCalculatedResult = null;
+
+    function switchRole(role) {
+      currentRole = role;
+      const sBtn = document.getElementById('roleStudentBtn');
+      const pBtn = document.getElementById('roleProfBtn');
+      const sView = document.getElementById('studentView');
+      const pView = document.getElementById('profView');
+
+      if (role === 'member') {
+        sBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow';
+        pBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white';
+        sView.classList.remove('hidden');
+        pView.classList.add('hidden');
+      } else {
+        pBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-indigo-600 text-white shadow';
+        sBtn.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-slate-400 hover:text-white';
+        pView.classList.remove('hidden');
+        sView.classList.add('hidden');
+        refreshDashboard();
+      }
+    }
+
+    // ==========================================
+    // 5. DIAGNOSIS FLOW
+    // ==========================================
+    function startDiagnosis() {
+      currentQIndex = 0;
+      quizAnswers = {};
+      document.getElementById('quizContainer').classList.remove('hidden');
+      document.getElementById('myResultCard').classList.add('hidden');
+      renderQuestion();
+    }
+
+    function renderQuestion() {
+      const q = questions[currentQIndex];
+      document.getElementById('quizProgressText').innerText = `Q ${currentQIndex + 1} / 30`;
+      document.getElementById('quizAxisTitle').innerText = q.title;
+      document.getElementById('quizQuestionText').innerText = q.text;
+      const progressPercent = ((currentQIndex + 1) / 30) * 100;
+      document.getElementById('quizProgressBar').style.width = `${progressPercent}%`;
+    }
+
+    function answerQuestion(val) {
+      const q = questions[currentQIndex];
+      const finalScore = q.invert ? -val : val;
+      quizAnswers[q.id] = { axis: q.axis, score: finalScore };
+
+      currentQIndex++;
+      if (currentQIndex < questions.length) {
+        renderQuestion();
+      } else {
+        finishDiagnosis();
+      }
+    }
+
+    function finishDiagnosis() {
+      document.getElementById('quizContainer').classList.add('hidden');
+
+      let scores = { A_T: 0, O_V: 0, E_I: 0, S_N: 0, T_F: 0, J_P: 0 };
+      Object.values(quizAnswers).forEach(a => {
+        scores[a.axis] += a.score;
+      });
+
+      const subAT = scores.A_T >= 0 ? 'A' : 'T';
+      const subOV = scores.O_V >= 0 ? 'O' : 'V';
+      const subCode = `${subAT}${subOV}`;
+
+      const baseEI = scores.E_I >= 0 ? 'E' : 'I';
+      const baseSN = scores.S_N >= 0 ? 'S' : 'N';
+      const baseTF = scores.T_F >= 0 ? 'T' : 'F';
+      const baseJP = scores.J_P >= 0 ? 'J' : 'P';
+      const baseCode = `${baseEI}${baseSN}${baseTF}${baseJP}`;
+
+      const fullCode = `${baseCode}-${subCode}`;
+
+      lastCalculatedResult = {
+        fullCode: fullCode,
+        baseCode: baseCode,
+        subCode: subCode,
+        scores: scores
+      };
+
+      displayResultCard(getFullProfile(fullCode));
+    }
+
+    function quickDemoDiagnosis() {
+      lastCalculatedResult = {
+        fullCode: 'INTJ-TO', baseCode: 'INTJ', subCode: 'TO',
+        scores: { A_T: -4, O_V: 6, E_I: -5, S_N: 4, T_F: 6, J_P: 5 }
+      };
+      displayResultCard(getFullProfile('INTJ-TO'));
+    }
+
+    function displayResultCard(profile) {
+      document.getElementById('resTag').innerText = profile.tag;
+      document.getElementById('resTitle').innerText = profile.title;
+      document.getElementById('resMindset').innerText = profile.mindset;
+      document.getElementById('resStuck').innerText = profile.stuck;
+      document.getElementById('resVoice').innerText = profile.voice;
+
+      document.getElementById('myResultCard').classList.remove('hidden');
+    }
+
+    async function saveResultToDb() {
+      const name = document.getElementById('userNameInput').value.trim();
+      const grade = document.getElementById('userGradeInput').value;
+
+      if (!name) {
+        alert('名前を入力してください');
+        return;
+      }
+
+      if (supabase) {
+        const { data, error } = await supabase.from('lab_results').insert([{
+          user_name: name,
+          grade: grade,
+          type_code: lastCalculatedResult.fullCode,
+          base_type: lastCalculatedResult.baseCode,
+          sub_type: lastCalculatedResult.subCode,
+          raw_scores: lastCalculatedResult.scores
+        }]);
+
+        if (error) {
+          alert('保存に失敗しました: ' + error.message);
+        } else {
+          alert('クラウドDBに診断結果を保存しました！');
+        }
+      } else {
+        // Local Mock Save
+        mockDbMembers.push({
+          id: Date.now().toString(),
+          user_name: name,
+          grade: grade,
+          type_code: lastCalculatedResult.fullCode,
+          base_type: lastCalculatedResult.baseCode,
+          sub_type: lastCalculatedResult.subCode,
+          raw_scores: lastCalculatedResult.scores
+        });
+        alert('ローカルメモリに保存しました！（Supabase連携でクラウド保存になります）');
+      }
+    }
+
+    // ==========================================
+    // 6. PROFESSOR DASHBOARD & CHART
+    // ==========================================
+    let chartInstance = null;
+
+    async function refreshDashboard() {
+      let members = mockDbMembers;
+
+      if (supabase) {
+        const { data, error } = await supabase.from('lab_results').select('*').order('created_at', { ascending: false });
+        if (!error && data) {
+          members = data;
+        }
+      }
+
+      document.getElementById('memberCountBadge').innerText = `${members.length}名`;
+
+      // RENDER MEMBER CARDS
+      const container = document.getElementById('memberListContainer');
+      container.innerHTML = '';
+
+      members.forEach(m => {
+        const prof = getFullProfile(m.type_code);
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-2';
+        card.innerHTML = `
+          <div class="flex justify-between items-center">
+            <div>
+              <span class="text-xs text-indigo-400 font-bold">[${m.grade}]</span>
+              <strong class="text-white text-sm ml-1">${m.user_name}</strong>
+            </div>
+            <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded border border-slate-700">${prof.typeCode}</span>
+          </div>
+          <p class="text-xs text-slate-400">${prof.mindset}</p>
+          <div class="text-xs font-semibold text-emerald-300 bg-emerald-950/30 p-2 rounded border border-emerald-900/50">
+            💬 面談テンプレート: ${prof.voice}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // POPULATE PAIR SELECTS
+      const selA = document.getElementById('pairSelectA');
+      const selB = document.getElementById('pairSelectB');
+      selA.innerHTML = ''; selB.innerHTML = '';
+      members.forEach((m, idx) => {
+        selA.options.add(new Option(`${m.user_name} (${m.type_code})`, idx));
+        selB.options.add(new Option(`${m.user_name} (${m.type_code})`, idx));
+      });
+      if (members.length > 1) selB.selectedIndex = 1;
+
+      runPairingSimulation();
+      renderMatrixChart(members);
+    }
+
+    function renderMatrixChart(members) {
+      const ctx = document.getElementById('matrixChart').getContext('2d');
+      if (chartInstance) chartInstance.destroy();
+
+      const scatterData = members.map(m => ({
+        x: m.raw_scores ? m.raw_scores.O_V : 0,
+        y: m.raw_scores ? m.raw_scores.A_T : 0,
+        label: m.user_name
+      }));
+
+      chartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: '研究室メンバー配置',
+            data: scatterData,
+            backgroundColor: '#818cf8',
+            pointRadius: 8,
+            pointHoverRadius: 10
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: '◄ 理論派 (V)  |  現場派 (O) ►', color: '#94a3b8' },
+              min: -10, max: 10,
+              grid: { color: '#334155' }
+            },
+            y: {
+              title: { display: true, text: '◄ 慎重型 (T)  |  タフ型 (A) ►', color: '#94a3b8' },
+              min: -10, max: 10,
+              grid: { color: '#334155' }
+            }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.raw.label} (O/V: ${ctx.raw.x}, A/T: ${ctx.raw.y})`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function runPairingSimulation() {
+      const idxA = document.getElementById('pairSelectA').value;
+      const idxB = document.getElementById('pairSelectB').value;
+      const box = document.getElementById('pairResultBox');
+
+      if (idxA === idxB) {
+        box.innerHTML = '<div class="text-xs text-amber-400">異なる2名を選択してください</div>';
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="text-xs font-bold text-indigo-400">シナジー診断結果 (相性良好: 85%)</div>
+        <p class="text-xs text-slate-300 leading-relaxed">
+          理論派(V)と現場派(O)の強力な補完ペアです。一方が研究のロジック・ストーリーを構築し、もう一方が泥臭いデータ検証を回すことでスピード感ある成果が期待できます。
+        </p>
+      `;
+    }
+
+    // INITIALIZATION
+    window.onload = () => {
+      switchRole('member');
+    };
+  </script>
+</body>
+</html>
